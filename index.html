@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechUniverse | Premium Store</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --dark: #0f172a;
+            --bg: #f8fafc;
+            --accent: #10b981;
+            --danger: #ef4444;
+        }
+
+        body { 
+            font-family: 'Segoe UI', system-ui, sans-serif; 
+            background: var(--bg); margin: 0; color: var(--dark);
+            overflow-x: hidden;
+        }
+
+        header { background: white; padding: 25px 20px; text-align: center; border-bottom: 1px solid #e2e8f0; }
+
+        .controls-bar {
+            padding: 15px 40px; background: white; border-bottom: 1px solid #e2e8f0;
+            position: sticky; top: 0; z-index: 100;
+            display: grid; grid-template-columns: 1fr 2fr 1fr; align-items: center;
+        }
+        .search-input {
+            width: 100%; max-width: 500px; padding: 12px 20px; 
+            border-radius: 12px; border: 2px solid #e2e8f0; font-size: 1rem;
+        }
+
+        .container { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 25px; padding: 40px; }
+        .product-card {
+            background: white; border-radius: 20px; padding: 20px; border: 1px solid #f1f5f9; 
+            transition: 0.3s; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .product-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+        .product-card img { width: 100%; height: 160px; object-fit: contain; margin-bottom: 15px; }
+        .price-tag { color: var(--primary); font-size: 1.3rem; font-weight: 800; margin-bottom: 10px; }
+        
+        .cart-btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: 600; }
+
+        .flying-item {
+            position: fixed; z-index: 9999; width: 70px; height: 70px; background-size: contain; background-repeat: no-repeat;
+            background-color: white; border-radius: 10px; 
+            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid var(--primary); pointer-events: none;
+        }
+
+        .cart-icon {
+            position: fixed; bottom: 30px; left: 30px; background: var(--primary); color: white;
+            width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1001; font-size: 28px; box-shadow: 0 10px 20px rgba(37,99,235,0.4);
+        }
+        .cart-badge {
+            position: absolute; top: 0; right: 0; background: var(--danger); color: white;
+            font-size: 12px; width: 24px; height: 24px; border-radius: 50%; display: none; align-items: center; justify-content: center; border: 2px solid white; font-weight: bold;
+        }
+        .sidebar-cart {
+            position: fixed; left: -450px; top: 0; width: 400px; height: 100%; background: white;
+            box-shadow: 10px 0 50px rgba(0,0,0,0.1); padding: 25px; z-index: 1000; transition: 0.3s ease-in-out;
+            display: flex; flex-direction: column;
+        }
+        .sidebar-cart.open { left: 0; }
+
+        .close-sidebar-btn {
+            background: #334155; color: white; border: none;
+            padding: 16px; border-radius: 12px; margin-bottom: 30px; cursor: pointer;
+            font-weight: 800; text-align: center; font-size: 1rem;
+        }
+
+        .cart-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #f1f5f9; }
+        .cart-item img { width: 45px; height: 45px; object-fit: contain; }
+
+        .payment-form { display: none; flex-direction: column; gap: 15px; background: #f8fafc; padding: 20px; border-radius: 15px; }
+        .payment-form input { padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 1rem; }
+
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .modal-box { background: white; width: 90%; max-width: 600px; border-radius: 20px; padding: 30px; position: relative; }
+        .close-modal { position: absolute; right: 20px; top: 15px; font-size: 30px; cursor: pointer; color: #cbd5e1; }
+    </style>
+</head>
+<body>
+
+    <header><h1>TechUniverse</h1><p>Hardware Solutions 2026</p></header>
+
+    <div class="controls-bar">
+        <div></div>
+        <div style="text-align:center;"><input type="text" id="searchInput" class="search-input" placeholder="Search components..." oninput="filterAndSort()"></div>
+        <div style="text-align:right;">
+            <select id="sortSelect" style="padding:10px; border-radius:8px;" onchange="filterAndSort()">
+                <option value="default">Default View</option>
+                <option value="az">Sort: A to Z</option>
+                <option value="za">Sort: Z to A</option>
+                <option value="high">Price: High to Low</option>
+                <option value="low">Price: Low to High</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="product-grid" class="container"></div>
+
+    <div id="infoModal" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="closeModal()">&times;</span>
+            <div id="modal-body" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;"></div>
+        </div>
+    </div>
+
+    <div id="sidebarCart" class="sidebar-cart">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;">
+            <h2>Your Basket</h2>
+            <button style="color:var(--danger); border:none; background:none; cursor:pointer; font-weight:bold;" onclick="clearFullBasket()">✕ Clear</button>
+        </div>
+        
+        <div id="cart-view" style="flex-grow:1; display:flex; flex-direction:column; overflow:hidden;">
+            <div id="cart-list" style="overflow-y: auto; flex-grow: 1;"></div>
+            <div style="margin-top:20px; border-top: 1px solid #eee; padding-top:10px; margin-bottom: 20px;">
+                <div style="font-size: 1.4rem; font-weight: 900; display:flex; justify-content:space-between; color: var(--dark);">
+                    Total: <span>$<span id="cart-total">0.00</span></span>
+                </div>
+                <button class="cart-btn" style="background:var(--accent); margin-top:15px; height: 55px;" onclick="showPayment()">Proceed to Visa Payment</button>
+            </div>
+        </div>
+
+        <div id="payment-view" class="payment-form">
+            <h3 style="text-align:center; margin-top:0;">💳 Visa Checkout</h3>
+            <input type="text" placeholder="Cardholder Name">
+            <input type="text" placeholder="Card Number (16 Digits)">
+            <div style="display:flex; gap:10px;">
+                <input type="text" placeholder="MM/YY" style="flex:1">
+                <input type="text" placeholder="CVC" style="flex:1">
+            </div>
+            <button class="cart-btn" style="background:var(--dark);" onclick="processPayment()">Pay $<span id="pay-amount">0.00</span> Now</button>
+            <button onclick="hidePayment()" style="background:none; border:none; text-decoration:underline; cursor:pointer; color:#64748b; margin-top:10px;">Back to Basket</button>
+        </div>
+
+        <button class="close-sidebar-btn" onclick="toggleCart()">CLOSE SIDEBAR</button>
+    </div>
+
+    <div class="cart-icon" onclick="toggleCart()">🛒<div id="cart-badge" class="cart-badge">0</div></div>
+
+   <script>
+const products = [
+    { name: "iPhone 17 Pro", price: 1499.99, img: "product1.webp", desc: "A19 Pro chip with titanium body." },
+    { name: "Samsung S25 Ultra", price: 999.99, img: "product2.JPEG", desc: "AI photography king." },
+    { name: "MacBook Air", price: 1119.99, img: "product3.JPEG", desc: "Powerful M3 silicon." },
+    { name: "Sony Headphones", price: 300.00, img: "product4.WEBP", desc: "Best-in-class noise cancellation." },
+    { name: "Apple AirPods Pro 3", price: 299.99, img: "product5.JPEG", desc: "Immersive spatial audio." },
+    { name: "Lenovo Legion 5 Pro", price: 2199.99, img: "product6.JPG", desc: "Elite RTX gaming laptop." },
+    { name: "Lenovo LOQ", price: 1099.99, img: "product7.WEBP", desc: "Modern gaming performance." },
+    { name: "Apple Watch Series 3", price: 199.99, img: "product8.JPG", desc: "Reliable fitness companion." },
+    { name: "NVIDIA RTX 5090", price: 1999.99, img: "product9.JPG", desc: "Ultimate 32GB GPU." },
+    { name: "NVIDIA RTX 3090", price: 804.99, img: "product10.JPG", desc: "24GB Workstation monster." },
+    { name: "NVIDIA RTX 3060 Ti", price: 339.99, img: "product11.JPG", desc: "High-value 1440p gaming." },
+    { name: "NVIDIA RTX 5060", price: 329.99, img: "product12.jpeg", desc: "Next-gen ray tracing efficiency." },
+    { name: "NVIDIA RTX 5070", price: 599.99, img: "product13.png", desc: "Top-tier gaming performance." },
+    { name: "NVIDIA RTX 3060", price: 219.99, img: "product14.JPG", desc: "Fan favorite GPU." },
+    { name: "NVIDIA GTX 1070", price: 399.99, img: "product15.JPG", desc: "The legendary champion." },
+    { name: "Asus ROG Strix XG49VQ", price: 1200.99, img: "product16.JPG", desc: "Ultrawide 49-inch display." },
+    { name: "Dell Alienware Wireless", price: 239.99, img: "product17.WEBP", desc: "Crystal clear gaming audio." },
+    { name: "6D RGB Gaming Mouse", price: 19.99, img: "product18.WEBP", desc: "Precision RGB gaming." },
+    { name: "Razor Mousepad", price: 49.99, img: "product19.JPG", desc: "Speed-optimized surface." },
+    { name: "PS5 Controller", price: 74.99, img: "product20.WEBP", desc: "DualSense Haptic feedback." },
+    { name: "ASUS ROG STRIX Z890-F", price: 499.99, img: "product21.JPEG", desc: "Premium Z890 Motherboard." },
+    { name: "MSI MAG B550 Tomahawk", price: 171.99, img: "product22.JPG", desc: "Battle-tested AM4 board." },
+    { name: "Team T-Force 64GB DDR4", price: 299.99, img: "product23.WEBP", desc: "Extreme multitasking RAM." },
+    { name: "ADATA XPG 16GB DDR4", price: 69.99, img: "product24.WEBP", desc: "Reliable gaming memory." },
+    { name: "Samsung 9100 PRO 4TB", price: 469.99, img: "product25.JPG", desc: "Insane PCIe 5.0 speeds." },
+    { name: "Kingston A400 1TB", price: 99.99, img: "product26.GIF", desc: "Speedy SSD storage." },
+    { name: "Thermaltake 550W PSU", price: 51.99, img: "product27.JPG", desc: "Steady RGB power supply." },
+    { name: "Gigabyte Aorus 1200W", price: 352.99, img: "product28.JPG", desc: "Extreme power for dual GPUs." },
+    { name: "Mars Gaming Mc61 Case", price: 137.99, img: "product29.JPEG", desc: "Futuristic open chassis." },
+    { name: "CASE DARK FLASH DS900", price: 95.99, img: "product30.GIF", desc: "Panoramic view gaming case." },
+    { name: "NZXT Kraken Elite 360", price: 299.99, img: "product31.JPG", desc: "LCD display AIO cooler." },
+    { name: "Xigmatek Neon Aqua", price: 119.99, img: "product32.WEBP", desc: "Neon liquid cooling." },
+    { name: "PS5", price: 529.99, img: "product33.WEBP", desc: "The future of console gaming." },
+    { name: "PS4 500GB", price: 184.99, img: "product34.WEBP", desc: "Classic console choice." },
+    { name: "PS4 Controller", price: 11.99, img: "product35.WEBP", desc: "Standard wireless control." },
+    { name: "Driving Force G29", price: 235.00, img: "product36.JPG", desc: "Realistic racing simulation." },
+    { name: "JBL PartyBox 110", price: 499.99, img: "product37.JPEG", desc: "High-power party sound." },
+    { name: "HyperX Cloud II Wireless", price: 145.99, img: "product38.WEBP", desc: "Iconic comfort and audio." },
+    { name: "3D Digital Alarm Clock", price: 9.99, img: "product39.JPG", desc: "Modern LED desk clock." },
+    { name: "FURGLE Gaming Chair", price: 149.99, img: "product40.WEBP", desc: "Ergonomic leather throne." },
+    { name: "Samsung S24 Ultra", price: 865.99, img: "product41.WEBP", desc: "256GB 12GB RAM." },
+    { name: "Samsung S23 Ultra", price: 799.99, img: "product42.WEBP", desc: "256GB 12GB RAM." },
+    { name: "Samsung S22 Ultra", price: 555.99, img: "product43.webp", desc: "256GB 12GB RAM." },
+    { name: "Samsung S21", price: 200.99, img: "product44.jpg", desc: "128GB 12GB RAM." },
+    { name: "Samsung S20 Ultra", price: 400.99, img: "product45.JPG", desc: "128GB 12GB RAM." },
+    { name: "Samsung Note 10 Plus", price: 799.99, img: "product46.jpg", desc: "256GB 12GB RAM." },
+    { name: "Samsung A15", price: 140.99, img: "product47.jpg", desc: "256GB 8GB RAM." },
+    { name: "Samsung A17", price: 208.99, img: "product48.JPEG", desc: "256GB 12GB RAM." },
+    { name: "Samsung A16", price: 172.99, img: "product49.jpeg", desc: "256GB 12GB RAM." },
+    { name: "Samsung A72 (Lite)", price: 140.99, img: "product50.jpg", desc: "128GB 8GB RAM." },
+    { name: "iPhone 17 Pro (Orange)", price: 1755.99, img: "product51.jpg", desc: "1TB." },
+    { name: "iPhone 16 Pro Max", price: 1500.99, img: "product52.jpeg", desc: "512GB." },
+    { name: "iPhone 16 Pro", price: 1485.99, img: "product53.webp", desc: "1TB." },
+    { name: "iPhone 15 Pro Max", price: 1150.99, img: "product54.webp", desc: "256GB." },
+    { name: "iPhone 15 Pro", price: 900.99, img: "product55.webp", desc: "128GB." },
+    { name: "iPhone 14 Pro Max", price: 942.99, img: "product56.webp", desc: "512GB." },
+    { name: "iPhone 14 Pro", price: 750.99, img: "product57.avif", desc: "256GB." },
+	{ name: "iPhone 13 Pro Max", price: 1200.99, img: "product58.jpeg", desc: "512GB." },
+	{ name: "iPhone 13 Pro", price: 500.99, img: "product59.webp", desc: "128GB." },
+	{ name: "iPhone 12 Pro Max", price: 610.99, img: "product60.jpeg", desc: "512GB." },
+	{ name: "iPhone 12 Pro", price: 450.99, img: "product61.jpeg", desc: "512GB." },
+];
+
+   
+
+        let cart = [];
+        const originalList = [...products];
+
+        function renderGrid(items) {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = items.map(p => `
+                <div class="product-card" onclick="openInfo('${p.name}')">
+                    <img src="${p.img}" alt="${p.name}">
+                    <div><h3>${p.name}</h3><div class="price-tag">$${p.price.toFixed(2)}</div></div>
+                    <button class="cart-btn" onclick="addToCart(event, this, '${p.img}', '${p.name}', ${p.price})">Add to Cart</button>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(e, btn, img, name, price) {
+            if(e) e.stopPropagation();
+            const cartIcon = document.querySelector('.cart-icon');
+            const btnPos = btn.getBoundingClientRect();
+            const cartPos = cartIcon.getBoundingClientRect();
+            const flyer = document.createElement('div');
+            flyer.className = 'flying-item'; flyer.style.backgroundImage = `url(${img})`;
+            flyer.style.left = `${btnPos.left}px`; flyer.style.top = `${btnPos.top}px`;
+            document.body.appendChild(flyer);
+            setTimeout(() => {
+                flyer.style.left = `${cartPos.left + 10}px`; flyer.style.top = `${cartPos.top + 10}px`;
+                flyer.style.transform = 'scale(0.1) rotate(180deg)'; flyer.style.opacity = '0';
+            }, 20);
+            setTimeout(() => { flyer.remove(); cart.push({name, price, img}); updateCartUI(); }, 800);
+        }
+
+        function updateCartUI() {
+            const list = document.getElementById('cart-list');
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            list.innerHTML = cart.map((item, idx) => `
+                <div class="cart-item">
+                    <img src="${item.img}">
+                    <div style="flex:1;"><b>${item.name}</b><br>$${item.price.toFixed(2)}</div>
+                    <button style="border:none; background:none; color:red; cursor:pointer;" onclick="removeFromCart(${idx})">✕</button>
+                </div>
+            `).join('');
+            document.getElementById('cart-total').innerText = total.toFixed(2);
+            document.getElementById('pay-amount').innerText = total.toFixed(2);
+            const badge = document.getElementById('cart-badge');
+            badge.innerText = cart.length; badge.style.display = cart.length > 0 ? 'flex' : 'none';
+        }
+
+        function removeFromCart(index) { cart.splice(index, 1); updateCartUI(); }
+        function clearFullBasket() { if(confirm("Empty your entire basket?")) { cart = []; updateCartUI(); } }
+        function toggleCart() { document.getElementById('sidebarCart').classList.toggle('open'); }
+        function closeModal() { document.getElementById('infoModal').style.display = 'none'; }
+        
+        function showPayment() { 
+            if(cart.length === 0) return alert("Basket is empty!");
+            document.getElementById('cart-view').style.display = 'none'; 
+            document.getElementById('payment-view').style.display = 'flex'; 
+        }
+        function hidePayment() { 
+            document.getElementById('cart-view').style.display = 'flex'; 
+            document.getElementById('payment-view').style.display = 'none'; 
+        }
+        function processPayment() { 
+            alert("Visa Payment Successful! Thank you for your purchase."); 
+            cart = []; updateCartUI(); hidePayment(); toggleCart(); 
+        }
+
+        function openInfo(name) {
+            const p = products.find(x => x.name === name);
+            if(!p) return;
+            document.getElementById('modal-body').innerHTML = `
+                <div style="flex:1; text-align:center;"><img src="${p.img}" style="max-width:100%; max-height:220px;"></div>
+                <div style="flex:1.2;"><h3>${p.name}</h3><p>${p.desc}</p><div class="price-tag">$${p.price.toFixed(2)}</div>
+                <button class="cart-btn" onclick="addToCart(null, this, '${p.img}', '${p.name}', ${p.price}); closeModal();">Add to Cart</button></div>`;
+            document.getElementById('infoModal').style.display = 'flex';
+        }
+
+        function filterAndSort() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const sort = document.getElementById('sortSelect').value;
+            let items = [...originalList].filter(p => p.name.toLowerCase().includes(term));
+            if (sort === 'az') items.sort((a,b) => a.name.localeCompare(b.name));
+            if (sort === 'za') items.sort((a,b) => b.name.localeCompare(a.name));
+            if (sort === 'high') items.sort((a,b) => b.price - a.price);
+            if (sort === 'low') items.sort((a,b) => a.price - b.price);
+            renderGrid(items);
+        }
+
+        window.onload = () => renderGrid(originalList);
+    </script>
+</body>
+</html>
